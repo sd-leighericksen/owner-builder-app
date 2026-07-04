@@ -1,0 +1,28 @@
+@import "tailwindcss";
+
+@theme {
+  --color-brand-50: #f4f8ed;
+  --color-brand-100: #e5efd6;
+  --color-brand-200: #cce0b1;
+  --color-brand-300: #accb84;
+  --color-brand-400: #8db55d;
+  --color-brand-500: #6f9a40;
+  --color-brand-600: #567a30;
+  --color-brand-700: #435e28;
+  --color-brand-800: #384c24;
+  --color-brand-900: #314122;
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+html {
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  @apply bg-stone-50 text-stone-900 antialiased;
+}
+
+/* Safe-area padding for the mobile bottom nav (PWA on phones). */
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0);
+}

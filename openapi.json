@@ -1,0 +1,2579 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Owner-Builder Project Management API",
+    "version": "1.0.0",
+    "description": "Versioned REST API for the Australian owner-builder project management app. All business logic lives behind this API; the web app is just the first client. Money is integer cents (AUD) with explicit GST fields. Compliance content is a checklist aid, not legal advice — verify with the VBA and your relevant building surveyor."
+  },
+  "servers": [
+    {
+      "url": "/"
+    }
+  ],
+  "security": [
+    {
+      "apiKey": []
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "apiKey": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "API key (ob_...) or Supabase session. Machine access uses scoped, revocable API keys."
+      }
+    },
+    "schemas": {
+      "TaskCreate": {
+        "type": "object",
+        "properties": {
+          "projectId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "stageId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 300
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 5000
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "todo",
+              "in_progress",
+              "blocked",
+              "done"
+            ],
+            "default": "todo"
+          },
+          "dueDate": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+            "description": "ISO date (displayed as DD/MM/YYYY in the UI)",
+            "example": "2026-07-04"
+          },
+          "assignedContactId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "isComplianceItem": {
+            "type": "boolean",
+            "default": false
+          },
+          "dependsOnTaskIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "default": []
+          }
+        },
+        "required": [
+          "projectId",
+          "title"
+        ]
+      },
+      "MoneyInput": {
+        "type": "object",
+        "properties": {
+          "amountExGst": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Money as integer cents (AUD)",
+            "example": 125000
+          },
+          "amountIncGst": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Money as integer cents (AUD)",
+            "example": 125000
+          },
+          "gstApplicable": {
+            "type": "boolean",
+            "default": true
+          }
+        }
+      },
+      "QuoteLineItemInput": {
+        "type": "object",
+        "properties": {
+          "description": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1000
+          },
+          "qty": {
+            "type": "string",
+            "maxLength": 50
+          },
+          "unit": {
+            "type": "string",
+            "maxLength": 50
+          },
+          "unitPriceCents": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Money as integer cents (AUD)",
+            "example": 125000
+          },
+          "money": {
+            "$ref": "#/components/schemas/MoneyInput"
+          }
+        },
+        "required": [
+          "description",
+          "money"
+        ]
+      },
+      "QuoteCreate": {
+        "type": "object",
+        "properties": {
+          "projectId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "contactId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "budgetCategoryId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "scopeOfWork": {
+            "type": "string",
+            "maxLength": 5000
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "requested",
+              "received",
+              "accepted",
+              "declined"
+            ],
+            "default": "requested"
+          },
+          "money": {
+            "$ref": "#/components/schemas/MoneyInput"
+          },
+          "validUntil": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+            "description": "ISO date (displayed as DD/MM/YYYY in the UI)",
+            "example": "2026-07-04"
+          },
+          "documentId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "notes": {
+            "type": "string",
+            "maxLength": 5000
+          },
+          "lineItems": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QuoteLineItemInput"
+            },
+            "default": []
+          }
+        },
+        "required": [
+          "projectId",
+          "contactId"
+        ]
+      },
+      "BudgetCategoryCreate": {
+        "type": "object",
+        "properties": {
+          "projectId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "code": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 20
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "budgetAmount": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "default": 0,
+            "description": "Money as integer cents (AUD)",
+            "example": 125000
+          },
+          "isContingency": {
+            "type": "boolean",
+            "default": false
+          }
+        },
+        "required": [
+          "projectId",
+          "code",
+          "name"
+        ]
+      },
+      "TransactionCreate": {
+        "type": "object",
+        "properties": {
+          "projectId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "budgetCategoryId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "contactId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1000
+          },
+          "transactionDate": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+            "description": "ISO date (displayed as DD/MM/YYYY in the UI)",
+            "example": "2026-07-04"
+          },
+          "money": {
+            "$ref": "#/components/schemas/MoneyInput"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "invoice",
+              "receipt",
+              "deposit",
+              "refund"
+            ],
+            "default": "invoice"
+          },
+          "paymentStatus": {
+            "type": "string",
+            "enum": [
+              "unpaid",
+              "part_paid",
+              "paid",
+              "reimbursed"
+            ],
+            "default": "unpaid"
+          },
+          "documentId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "projectId",
+          "description",
+          "transactionDate",
+          "money"
+        ]
+      },
+      "VariationCreate": {
+        "type": "object",
+        "properties": {
+          "projectId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "budgetCategoryId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1000
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 2000
+          },
+          "money": {
+            "$ref": "#/components/schemas/MoneyInput"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "proposed",
+              "approved",
+              "rejected"
+            ],
+            "default": "proposed"
+          },
+          "variationDate": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+            "description": "ISO date (displayed as DD/MM/YYYY in the UI)",
+            "example": "2026-07-04"
+          }
+        },
+        "required": [
+          "projectId",
+          "description",
+          "money"
+        ]
+      },
+      "DiaryEntryCreate": {
+        "type": "object",
+        "properties": {
+          "projectId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "entryDate": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+            "description": "ISO date (displayed as DD/MM/YYYY in the UI)",
+            "example": "2026-07-04"
+          },
+          "weather": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "notes": {
+            "type": "string",
+            "maxLength": 10000
+          },
+          "peopleOnSite": {
+            "type": "string",
+            "maxLength": 2000
+          },
+          "entryType": {
+            "type": "string",
+            "enum": [
+              "general",
+              "incident",
+              "delivery"
+            ],
+            "default": "general"
+          },
+          "photoIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "default": []
+          }
+        },
+        "required": [
+          "projectId",
+          "entryDate"
+        ]
+      },
+      "InspectionUpdate": {
+        "type": "object",
+        "properties": {
+          "stageId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "bookedDate": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+            "description": "ISO date (displayed as DD/MM/YYYY in the UI)",
+            "example": "2026-07-04"
+          },
+          "completedDate": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+            "description": "ISO date (displayed as DD/MM/YYYY in the UI)",
+            "example": "2026-07-04"
+          },
+          "outcome": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "pass",
+              "fail",
+              "conditional"
+            ]
+          },
+          "inspectorContactId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "notes": {
+            "type": "string",
+            "maxLength": 5000
+          },
+          "evidenceDocumentIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        }
+      },
+      "InspectionCreate": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/InspectionUpdate"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "projectId": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "type": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 300
+              },
+              "required": {
+                "type": "boolean",
+                "default": false
+              }
+            },
+            "required": [
+              "projectId",
+              "type"
+            ]
+          }
+        ]
+      },
+      "projectId": {
+        "type": "string",
+        "format": "uuid"
+      },
+      "taskId": {
+        "type": "string",
+        "format": "uuid"
+      },
+      "contactId": {
+        "type": "string",
+        "format": "uuid"
+      },
+      "quoteId": {
+        "type": "string",
+        "format": "uuid"
+      },
+      "documentId": {
+        "type": "string",
+        "format": "uuid"
+      },
+      "stageId": {
+        "type": "string",
+        "format": "uuid"
+      },
+      "entryId": {
+        "type": "string",
+        "format": "uuid"
+      },
+      "inspectionId": {
+        "type": "string",
+        "format": "uuid"
+      },
+      "ProjectCreate": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "address": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          },
+          "lotPlanDetails": {
+            "type": "string",
+            "maxLength": 500
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "VIC",
+              "NSW",
+              "QLD",
+              "SA",
+              "WA",
+              "TAS",
+              "NT",
+              "ACT"
+            ],
+            "default": "VIC"
+          },
+          "ownerBuilderPermitNo": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "buildingPermitNo": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "startDate": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+            "description": "ISO date (displayed as DD/MM/YYYY in the UI)",
+            "example": "2026-07-04"
+          },
+          "targetCompletionDate": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+            "description": "ISO date (displayed as DD/MM/YYYY in the UI)",
+            "example": "2026-07-04"
+          },
+          "totalBudget": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "default": 0,
+            "description": "Money as integer cents (AUD)",
+            "example": 125000
+          },
+          "contingencyAmount": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "default": 0,
+            "description": "Money as integer cents (AUD)",
+            "example": 125000
+          },
+          "seedStages": {
+            "type": "boolean",
+            "default": true
+          },
+          "seedBudgetCategories": {
+            "type": "boolean",
+            "default": true
+          },
+          "seedChecklist": {
+            "type": "boolean",
+            "default": true
+          }
+        },
+        "required": [
+          "name",
+          "address"
+        ]
+      },
+      "ProjectUpdate": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "address": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          },
+          "lotPlanDetails": {
+            "type": "string",
+            "maxLength": 500
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "VIC",
+              "NSW",
+              "QLD",
+              "SA",
+              "WA",
+              "TAS",
+              "NT",
+              "ACT"
+            ],
+            "default": "VIC"
+          },
+          "ownerBuilderPermitNo": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "buildingPermitNo": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "startDate": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+            "description": "ISO date (displayed as DD/MM/YYYY in the UI)",
+            "example": "2026-07-04"
+          },
+          "targetCompletionDate": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+            "description": "ISO date (displayed as DD/MM/YYYY in the UI)",
+            "example": "2026-07-04"
+          },
+          "totalBudget": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "default": 0,
+            "description": "Money as integer cents (AUD)",
+            "example": 125000
+          },
+          "contingencyAmount": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "default": 0,
+            "description": "Money as integer cents (AUD)",
+            "example": 125000
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "planning",
+              "active",
+              "on_hold",
+              "completed",
+              "archived"
+            ]
+          },
+          "relevantBuildingSurveyorId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          }
+        }
+      },
+      "StageUpdate": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "sequence": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "plannedStart": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+            "description": "ISO date (displayed as DD/MM/YYYY in the UI)",
+            "example": "2026-07-04"
+          },
+          "plannedEnd": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+            "description": "ISO date (displayed as DD/MM/YYYY in the UI)",
+            "example": "2026-07-04"
+          },
+          "actualStart": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+            "description": "ISO date (displayed as DD/MM/YYYY in the UI)",
+            "example": "2026-07-04"
+          },
+          "actualEnd": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+            "description": "ISO date (displayed as DD/MM/YYYY in the UI)",
+            "example": "2026-07-04"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "not_started",
+              "in_progress",
+              "complete"
+            ]
+          }
+        }
+      },
+      "TaskUpdate": {
+        "type": "object",
+        "properties": {
+          "stageId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 300
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 5000
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "todo",
+              "in_progress",
+              "blocked",
+              "done"
+            ],
+            "default": "todo"
+          },
+          "dueDate": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+            "description": "ISO date (displayed as DD/MM/YYYY in the UI)",
+            "example": "2026-07-04"
+          },
+          "assignedContactId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "isComplianceItem": {
+            "type": "boolean",
+            "default": false
+          },
+          "dependsOnTaskIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "default": []
+          },
+          "sortOrder": {
+            "type": "integer"
+          }
+        }
+      },
+      "ContactCreate": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "trade",
+              "supplier",
+              "consultant",
+              "surveyor",
+              "certifier",
+              "inspector",
+              "other"
+            ],
+            "default": "trade"
+          },
+          "businessName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 300
+          },
+          "contactPerson": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "phone": {
+            "type": "string",
+            "maxLength": 50
+          },
+          "email": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 320,
+                "format": "email"
+              },
+              {
+                "type": "string",
+                "enum": [
+                  ""
+                ]
+              }
+            ]
+          },
+          "tradeCategory": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "licenceNumber": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "licenceType": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "licenceExpiry": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+            "description": "ISO date (displayed as DD/MM/YYYY in the UI)",
+            "example": "2026-07-04"
+          },
+          "notes": {
+            "type": "string",
+            "maxLength": 5000
+          }
+        },
+        "required": [
+          "businessName"
+        ]
+      },
+      "ContactInsuranceCreate": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "public_liability",
+              "workers_comp",
+              "professional_indemnity",
+              "construction_works",
+              "domestic_building",
+              "other"
+            ]
+          },
+          "insurer": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "policyNumber": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "expiryDate": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+            "description": "ISO date (displayed as DD/MM/YYYY in the UI)",
+            "example": "2026-07-04"
+          },
+          "certificateDocumentId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "type"
+        ]
+      },
+      "QuoteUpdate": {
+        "type": "object",
+        "properties": {
+          "contactId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "budgetCategoryId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "scopeOfWork": {
+            "type": "string",
+            "maxLength": 5000
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "requested",
+              "received",
+              "accepted",
+              "declined"
+            ],
+            "default": "requested"
+          },
+          "money": {
+            "$ref": "#/components/schemas/MoneyInput"
+          },
+          "validUntil": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+            "description": "ISO date (displayed as DD/MM/YYYY in the UI)",
+            "example": "2026-07-04"
+          },
+          "documentId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "notes": {
+            "type": "string",
+            "maxLength": 5000
+          }
+        }
+      },
+      "DocumentCreate": {
+        "type": "object",
+        "properties": {
+          "projectId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 300
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "permit",
+              "plan",
+              "engineering",
+              "compliance_certificate",
+              "insurance",
+              "contract",
+              "quote",
+              "invoice_receipt",
+              "warranty",
+              "correspondence",
+              "photo",
+              "other"
+            ],
+            "default": "other"
+          },
+          "stageId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "taskId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "contactId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "notes": {
+            "type": "string",
+            "maxLength": 5000
+          },
+          "expiryDate": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+            "description": "ISO date (displayed as DD/MM/YYYY in the UI)",
+            "example": "2026-07-04"
+          }
+        },
+        "required": [
+          "title"
+        ]
+      },
+      "DiaryEntryRevise": {
+        "type": "object",
+        "properties": {
+          "entryDate": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+            "description": "ISO date (displayed as DD/MM/YYYY in the UI)",
+            "example": "2026-07-04"
+          },
+          "weather": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "notes": {
+            "type": "string",
+            "maxLength": 10000
+          },
+          "peopleOnSite": {
+            "type": "string",
+            "maxLength": 2000
+          },
+          "entryType": {
+            "type": "string",
+            "enum": [
+              "general",
+              "incident",
+              "delivery"
+            ],
+            "default": "general"
+          },
+          "photoIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "default": []
+          }
+        }
+      },
+      "AiTaskConfigUpdate": {
+        "type": "object",
+        "properties": {
+          "modelId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "fallbackModelId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 200
+          },
+          "maxTokens": {
+            "type": "integer",
+            "minimum": 256,
+            "maximum": 200000
+          },
+          "temperature": {
+            "type": "string",
+            "pattern": "^\\d(\\.\\d+)?$"
+          },
+          "systemPromptOverride": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 20000
+          }
+        }
+      },
+      "ApiKeyCreate": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "scopes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "default": []
+          }
+        },
+        "required": [
+          "name"
+        ]
+      }
+    },
+    "parameters": {
+      "projectId": {
+        "schema": {
+          "$ref": "#/components/schemas/projectId"
+        },
+        "required": true,
+        "name": "projectId",
+        "in": "path"
+      },
+      "taskId": {
+        "schema": {
+          "$ref": "#/components/schemas/taskId"
+        },
+        "required": true,
+        "name": "taskId",
+        "in": "path"
+      },
+      "contactId": {
+        "schema": {
+          "$ref": "#/components/schemas/contactId"
+        },
+        "required": true,
+        "name": "contactId",
+        "in": "path"
+      },
+      "quoteId": {
+        "schema": {
+          "$ref": "#/components/schemas/quoteId"
+        },
+        "required": true,
+        "name": "quoteId",
+        "in": "path"
+      },
+      "documentId": {
+        "schema": {
+          "$ref": "#/components/schemas/documentId"
+        },
+        "required": true,
+        "name": "documentId",
+        "in": "path"
+      },
+      "stageId": {
+        "schema": {
+          "$ref": "#/components/schemas/stageId"
+        },
+        "required": true,
+        "name": "stageId",
+        "in": "path"
+      },
+      "entryId": {
+        "schema": {
+          "$ref": "#/components/schemas/entryId"
+        },
+        "required": true,
+        "name": "entryId",
+        "in": "path"
+      },
+      "inspectionId": {
+        "schema": {
+          "$ref": "#/components/schemas/inspectionId"
+        },
+        "required": true,
+        "name": "inspectionId",
+        "in": "path"
+      }
+    }
+  },
+  "paths": {
+    "/api/v1/projects": {
+      "get": {
+        "tags": [
+          "projects"
+        ],
+        "summary": "List projects",
+        "responses": {
+          "200": {
+            "description": "Projects",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": {}
+                      }
+                    }
+                  },
+                  "required": [
+                    "items"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "projects"
+        ],
+        "summary": "Create a project (wizard: seeds stages, budget categories and compliance checklist by state)",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/projects/{projectId}": {
+      "get": {
+        "tags": [
+          "projects"
+        ],
+        "summary": "Get a project",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/projectId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "projects"
+        ],
+        "summary": "Update a project",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/projectId"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated project",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/projects/{projectId}/stages": {
+      "get": {
+        "tags": [
+          "stages"
+        ],
+        "summary": "List build stages",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/projectId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Stages",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": {}
+                      }
+                    }
+                  },
+                  "required": [
+                    "items"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/stages/{stageId}": {
+      "patch": {
+        "tags": [
+          "stages"
+        ],
+        "summary": "Update a stage",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/stageId"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StageUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated stage",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/projects/{projectId}/tasks": {
+      "get": {
+        "tags": [
+          "tasks"
+        ],
+        "summary": "List tasks (filterable by stageId, status, assignedContactId)",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/projectId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Tasks with dependency warnings",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": {}
+                      }
+                    }
+                  },
+                  "required": [
+                    "items"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "tasks"
+        ],
+        "summary": "Create a task",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/projectId"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "stageId": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "format": "uuid"
+                  },
+                  "title": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 300
+                  },
+                  "description": {
+                    "type": "string",
+                    "maxLength": 5000
+                  },
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "todo",
+                      "in_progress",
+                      "blocked",
+                      "done"
+                    ],
+                    "default": "todo"
+                  },
+                  "dueDate": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                    "description": "ISO date (displayed as DD/MM/YYYY in the UI)",
+                    "example": "2026-07-04"
+                  },
+                  "assignedContactId": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "format": "uuid"
+                  },
+                  "isComplianceItem": {
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "dependsOnTaskIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "default": []
+                  }
+                },
+                "required": [
+                  "title"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created task",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/tasks/{taskId}": {
+      "patch": {
+        "tags": [
+          "tasks"
+        ],
+        "summary": "Update a task (status flow: todo / in_progress / blocked / done)",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/taskId"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TaskUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated task",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/projects/{projectId}/budget": {
+      "get": {
+        "tags": [
+          "budget"
+        ],
+        "summary": "Budget summary: budget vs committed (accepted quotes + approved variations) vs actual, contingency burn-down, GST",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/projectId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Budget summary",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/projects/{projectId}/budget-categories": {
+      "post": {
+        "tags": [
+          "budget"
+        ],
+        "summary": "Create a budget category (cost code)",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/projectId"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "code": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 20
+                  },
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "budgetAmount": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991,
+                    "default": 0,
+                    "description": "Money as integer cents (AUD)",
+                    "example": 125000
+                  },
+                  "isContingency": {
+                    "type": "boolean",
+                    "default": false
+                  }
+                },
+                "required": [
+                  "code",
+                  "name"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created category",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/projects/{projectId}/transactions": {
+      "post": {
+        "tags": [
+          "budget"
+        ],
+        "summary": "Record an actual cost (integer cents, GST-aware)",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/projectId"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "budgetCategoryId": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "format": "uuid"
+                  },
+                  "contactId": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "format": "uuid"
+                  },
+                  "description": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 1000
+                  },
+                  "transactionDate": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                    "description": "ISO date (displayed as DD/MM/YYYY in the UI)",
+                    "example": "2026-07-04"
+                  },
+                  "money": {
+                    "$ref": "#/components/schemas/MoneyInput"
+                  },
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "invoice",
+                      "receipt",
+                      "deposit",
+                      "refund"
+                    ],
+                    "default": "invoice"
+                  },
+                  "paymentStatus": {
+                    "type": "string",
+                    "enum": [
+                      "unpaid",
+                      "part_paid",
+                      "paid",
+                      "reimbursed"
+                    ],
+                    "default": "unpaid"
+                  },
+                  "documentId": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "format": "uuid"
+                  }
+                },
+                "required": [
+                  "description",
+                  "transactionDate",
+                  "money"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created transaction",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/projects/{projectId}/variations": {
+      "post": {
+        "tags": [
+          "budget"
+        ],
+        "summary": "Record a variation (approved variations adjust committed budget)",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/projectId"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "budgetCategoryId": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "format": "uuid"
+                  },
+                  "description": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 1000
+                  },
+                  "reason": {
+                    "type": "string",
+                    "maxLength": 2000
+                  },
+                  "money": {
+                    "$ref": "#/components/schemas/MoneyInput"
+                  },
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "proposed",
+                      "approved",
+                      "rejected"
+                    ],
+                    "default": "proposed"
+                  },
+                  "variationDate": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                    "description": "ISO date (displayed as DD/MM/YYYY in the UI)",
+                    "example": "2026-07-04"
+                  }
+                },
+                "required": [
+                  "description",
+                  "money"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created variation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/contacts": {
+      "get": {
+        "tags": [
+          "contacts"
+        ],
+        "summary": "List contacts with licences and insurances",
+        "responses": {
+          "200": {
+            "description": "Contacts",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": {}
+                      }
+                    }
+                  },
+                  "required": [
+                    "items"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "contacts"
+        ],
+        "summary": "Create a contact (trade/supplier/consultant/surveyor/certifier)",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ContactCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created contact",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/contacts/{contactId}/insurances": {
+      "post": {
+        "tags": [
+          "contacts"
+        ],
+        "summary": "Add an insurance policy to a contact (expiry drives alerts)",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/contactId"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ContactInsuranceCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created insurance",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/projects/{projectId}/quotes": {
+      "get": {
+        "tags": [
+          "quotes"
+        ],
+        "summary": "List quotes; ?budgetCategoryId=&compare=true returns the side-by-side comparison for a scope",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/projectId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Quotes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": {}
+                      }
+                    }
+                  },
+                  "required": [
+                    "items"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "quotes"
+        ],
+        "summary": "Create a quote with optional line items",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/projectId"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "contactId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "budgetCategoryId": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "format": "uuid"
+                  },
+                  "scopeOfWork": {
+                    "type": "string",
+                    "maxLength": 5000
+                  },
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "requested",
+                      "received",
+                      "accepted",
+                      "declined"
+                    ],
+                    "default": "requested"
+                  },
+                  "money": {
+                    "$ref": "#/components/schemas/MoneyInput"
+                  },
+                  "validUntil": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                    "description": "ISO date (displayed as DD/MM/YYYY in the UI)",
+                    "example": "2026-07-04"
+                  },
+                  "documentId": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "format": "uuid"
+                  },
+                  "notes": {
+                    "type": "string",
+                    "maxLength": 5000
+                  },
+                  "lineItems": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/components/schemas/QuoteLineItemInput"
+                    },
+                    "default": []
+                  }
+                },
+                "required": [
+                  "contactId"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created quote",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/quotes/{quoteId}": {
+      "patch": {
+        "tags": [
+          "quotes"
+        ],
+        "summary": "Update a quote (accepting a quote commits its amount against the budget category)",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/quoteId"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QuoteUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated quote",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/documents": {
+      "get": {
+        "tags": [
+          "documents"
+        ],
+        "summary": "Search/filter the document vault (projectId, category, stageId, taskId, contactId, search)",
+        "responses": {
+          "200": {
+            "description": "Documents",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": {}
+                      }
+                    }
+                  },
+                  "required": [
+                    "items"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "documents"
+        ],
+        "summary": "Create a document — multipart/form-data with `file` + `meta` (JSON), or JSON metadata only",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DocumentCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created document",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/documents/{documentId}/download": {
+      "get": {
+        "tags": [
+          "documents"
+        ],
+        "summary": "Get a signed, time-limited download URL",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/documentId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Signed URL",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "url": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "url"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/projects/{projectId}/diary": {
+      "post": {
+        "tags": [
+          "diary"
+        ],
+        "summary": "Create an immutable site diary entry (edits create revisions)",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/projectId"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "entryDate": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                    "description": "ISO date (displayed as DD/MM/YYYY in the UI)",
+                    "example": "2026-07-04"
+                  },
+                  "weather": {
+                    "type": "string",
+                    "maxLength": 200
+                  },
+                  "notes": {
+                    "type": "string",
+                    "maxLength": 10000
+                  },
+                  "peopleOnSite": {
+                    "type": "string",
+                    "maxLength": 2000
+                  },
+                  "entryType": {
+                    "type": "string",
+                    "enum": [
+                      "general",
+                      "incident",
+                      "delivery"
+                    ],
+                    "default": "general"
+                  },
+                  "photoIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "default": []
+                  }
+                },
+                "required": [
+                  "entryDate"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created entry",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/diary/{entryId}/revise": {
+      "post": {
+        "tags": [
+          "diary"
+        ],
+        "summary": "Create a revision superseding a diary entry (original preserved)",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/entryId"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DiaryEntryRevise"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Revision",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/projects/{projectId}/photos": {
+      "get": {
+        "tags": [
+          "photos"
+        ],
+        "summary": "Photo timeline (chronological, filterable by stage)",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/projectId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Photos with signed URLs",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": {}
+                      }
+                    }
+                  },
+                  "required": [
+                    "items"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "photos"
+        ],
+        "summary": "Upload a photo — multipart: file (required), thumbnail (client-resized), caption, stageId, takenAt",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/projectId"
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created photo",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/projects/{projectId}/inspections": {
+      "get": {
+        "tags": [
+          "inspections"
+        ],
+        "summary": "List inspections (VIC mandatory notification stages seeded at project creation)",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/projectId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Inspections",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": {}
+                      }
+                    }
+                  },
+                  "required": [
+                    "items"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/inspections/{inspectionId}": {
+      "patch": {
+        "tags": [
+          "inspections"
+        ],
+        "summary": "Update an inspection (book, complete, record outcome)",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/inspectionId"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InspectionUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated inspection",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/projects/{projectId}/dashboard": {
+      "get": {
+        "tags": [
+          "dashboard"
+        ],
+        "summary": "Dashboard aggregate: current stage, next tasks, upcoming inspections, budget position, expiring items",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/projectId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Dashboard",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/projects/{projectId}/export": {
+      "get": {
+        "tags": [
+          "export"
+        ],
+        "summary": "Full project export as JSON — data is never trapped",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/projectId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Export",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/settings/ai-task-configs/{taskType}": {
+      "patch": {
+        "tags": [
+          "settings"
+        ],
+        "summary": "Update the model for an AI task type (vision-required tasks reject non-vision models)",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "quote_extraction",
+                "receipt_capture",
+                "risk_review",
+                "ask_the_build"
+              ]
+            },
+            "required": true,
+            "name": "taskType",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AiTaskConfigUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated config",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/api-keys": {
+      "post": {
+        "tags": [
+          "settings"
+        ],
+        "summary": "Create a scoped API key (plaintext returned once)",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiKeyCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created key",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "webhooks": {}
+}
