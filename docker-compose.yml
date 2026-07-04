@@ -1,0 +1,43 @@
+# Self-hosted database path (brief §3): the owner already runs Docker + n8n.
+# Managed Supabase is the default; this compose file gives you a local/self-
+# hosted Postgres with the same migrations. For full self-hosted Supabase
+# (auth + storage), follow https://supabase.com/docs/guides/self-hosting/docker
+# and point NEXT_PUBLIC_SUPABASE_URL at it.
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: owner_builder
+    ports:
+      - "5432:5432"
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # Nightly logical backups (brief §7.3). Dumps land in ./backups.
+  db-backup:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PGPASSWORD: postgres
+    volumes:
+      - ./backups:/backups
+    entrypoint: >
+      sh -c 'while true; do
+        pg_dump -h db -U postgres owner_builder | gzip > /backups/owner_builder_$$(date +%Y%m%d_%H%M%S).sql.gz;
+        find /backups -name "*.sql.gz" -mtime +14 -delete;
+        sleep 86400;
+      done'
+
+volumes:
+  db-data:
